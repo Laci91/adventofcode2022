@@ -1,7 +1,7 @@
 package common;
 
-public interface AocDay {
-    long exercise1(String fileName);
+public interface AocDay<T> {
+    T exercise1(String fileName);
 
-    long exercise2(String fileName);
+    T exercise2(String fileName);
 }

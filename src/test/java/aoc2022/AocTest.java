@@ -6,16 +6,16 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.InvocationTargetException;
 
-public abstract class AocTest {
-    protected final AocDay testObject;
+public abstract class AocTest<T> {
+    protected final AocDay<T> testObject;
     private final int dayNumber;
-    private final long firstExpected;
-    private final long secondExpected;
+    private final T firstExpected;
+    private final T secondExpected;
 
-    public AocTest(int dayNumber, long firstExpected) {
+    public AocTest(int dayNumber, T firstExpected) {
         this.dayNumber = dayNumber;
         this.firstExpected = firstExpected;
-        this.secondExpected = Long.MIN_VALUE;
+        this.secondExpected = null;
         try {
             testObject = (AocDay) Class.forName("aoc2022.Day" + dayNumber).getDeclaredConstructor().newInstance();
         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException | InvocationTargetException | NoSuchMethodException e) {
@@ -23,7 +23,7 @@ public abstract class AocTest {
         }
     }
 
-    public AocTest(int dayNumber, long firstExpected, long secondExpected) {
+    public AocTest(int dayNumber, T firstExpected, T secondExpected) {
         this.dayNumber = dayNumber;
         this.firstExpected = firstExpected;
         this.secondExpected = secondExpected;
@@ -36,28 +36,28 @@ public abstract class AocTest {
 
     @Test
     public void testExercise1() {
-        long actual = testObject.exercise1("test" + dayNumber + ".txt");
+        T actual = testObject.exercise1("test" + dayNumber + ".txt");
         Assertions.assertEquals(firstExpected, actual);
     }
 
     @Test
     public void testExercise2() {
-        if (secondExpected == Long.MIN_VALUE) {
+        if (secondExpected == null) {
             return;
         }
-        long actual = testObject.exercise2("test" + dayNumber + ".txt");
+        T actual = testObject.exercise2("test" + dayNumber + ".txt");
         Assertions.assertEquals(secondExpected, actual);
     }
 
     @Test
     public void testReal1() {
-        long actual = testObject.exercise1("real" + dayNumber + ".txt");
+        T actual = testObject.exercise1("real" + dayNumber + ".txt");
         System.out.println(actual);
     }
 
     @Test
     public void testReal2() {
-        long actual = testObject.exercise2("real" + dayNumber + ".txt");
+        T actual = testObject.exercise2("real" + dayNumber + ".txt");
         System.out.println(actual);
     }
 }

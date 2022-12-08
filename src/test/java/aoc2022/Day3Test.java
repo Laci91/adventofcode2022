@@ -1,7 +1,7 @@
 package aoc2022;
 
-public class Day3Test extends AocTest {
+public class Day3Test extends AocTest<Long> {
     public Day3Test() {
-        super(3, 157, 70);
+        super(3, 157L, 70L);
     }
 }

@@ -7,16 +7,16 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Function;
 
-public class Day1 implements AocDay {
+public class Day1 implements AocDay<Long> {
 
     @Override
-    public long exercise1(String fileName) {
+    public Long exercise1(String fileName) {
         List<String> input = FileReader.readAllLines(fileName, Function.identity());
         return elfPayload(input).get(0).longValue();
     }
 
     @Override
-    public long exercise2(String fileName) {
+    public Long exercise2(String fileName) {
         List<String> input = FileReader.readAllLines(fileName, Function.identity());
         return elfPayload(input).subList(0, 3).stream().reduce(BigDecimal.ZERO, BigDecimal::add).longValue();
     }

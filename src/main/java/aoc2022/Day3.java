@@ -10,38 +10,43 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class Day3 implements AocDay {
+public class Day3 implements AocDay<Long> {
 
     @Override
-    public long exercise1(String fileName) {
-        List<String> input = FileReader.readAllLines(fileName, Function.identity());
-        return input.stream().map(this::splitInHalf).map(this::findCommonLetter).map(this::calculateScore).reduce(0L, Long::sum);
+    public Long exercise1(String fileName) {
+        List<Bag> input = FileReader.readAllLines(fileName, Bag::new);
+        return input.stream().map(this::findCommonLetter).map(this::calculateScore).reduce(0L, Long::sum);
     }
 
-    private char findCommonLetter(String[] arr) {
-        Set<Character> first = arr[0].chars().mapToObj(e->(char)e).collect(Collectors.toSet());
-        Set<Character> second = arr[1].chars().mapToObj(e->(char)e).collect(Collectors.toSet());
-        return Sets.intersection(first, second).stream().findFirst().orElseThrow();
+    private int findCommonLetter(Bag bag) {
+        return Sets.intersection(bag.first, bag.second).iterator().next();
     }
 
-    private long calculateScore(char letter) {
+    private long calculateScore(int letter) {
         return letter > 96 ? letter - 96 : letter - 38;
     }
 
-    private String[] splitInHalf(String input) {
-        return new String[] { input.substring(0, input.length() / 2), input.substring(input.length() / 2)};
-    }
-
     @Override
-    public long exercise2(String fileName) {
+    public Long exercise2(String fileName) {
         List<String> input = FileReader.readAllLines(fileName, Function.identity());
         return Lists.partition(input, 3).stream().map(this::findCommonLetter).map(this::calculateScore).reduce(0L, Long::sum);
     }
 
-    private char findCommonLetter(List<String> group) {
-        Set<Character> first = group.get(0).chars().mapToObj(e->(char)e).collect(Collectors.toSet());
-        Set<Character> second = group.get(1).chars().mapToObj(e->(char)e).collect(Collectors.toSet());
-        Set<Character> third = group.get(2).chars().mapToObj(e->(char)e).collect(Collectors.toSet());
+    private int findCommonLetter(List<String> group) {
+        Set<Integer> first = group.get(0).chars().boxed().collect(Collectors.toSet());
+        Set<Integer> second = group.get(1).chars().boxed().collect(Collectors.toSet());
+        Set<Integer> third = group.get(2).chars().boxed().collect(Collectors.toSet());
         return Sets.intersection(Sets.intersection(first, second), third).stream().findFirst().orElseThrow();
+    }
+
+    private record Bag(Set<Integer> first, Set<Integer> second) {
+        Bag(String first, String second) {
+            this(first.chars().boxed().collect(Collectors.toSet()),
+                second.chars().boxed().collect(Collectors.toSet()));
+        }
+
+        Bag(String full) {
+            this(full.substring(0, full.length()/2), full.substring(full.length()/2));
+        }
     }
 }

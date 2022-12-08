@@ -4,38 +4,49 @@ import common.AocDay;
 import common.FileReader;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class Day4 implements AocDay {
+public class Day4 implements AocDay<Long> {
+
+    Pattern pattern = Pattern.compile("(\\d+)-(\\d+),(\\d+)-(\\d+)");
 
     @Override
-    public long exercise1(String fileName) {
-        List<String[]> input = FileReader.readAllLines(fileName, str -> str.split(","));
-        return input.stream().filter(this::contains).count();
+    public Long exercise1(String fileName) {
+        List<AssignmentPair> input = FileReader.readAllLines(fileName, str -> {
+            Matcher m = pattern.matcher(str);
+            m.find();
+            return new AssignmentPair(new Assignment(m.group(1), m.group(2)), new Assignment(m.group(3), m.group(4)));
+        });
+        return input.stream().filter(ap -> contains(ap.first, ap.second)).count();
     }
 
-    private boolean contains(String[] assignments) {
-        Assignment first = new Assignment(assignments[0].split("-"));
-        Assignment second = new Assignment(assignments[1].split("-"));
+    private boolean contains(Assignment first, Assignment second) {
         return (first.from <= second.from && first.to >= second.to) ||
             (first.from >= second.from && first.to <= second.to);
     }
 
     @Override
-    public long exercise2(String fileName) {
-        List<String[]> input = FileReader.readAllLines(fileName, str -> str.split(","));
-        return input.stream().filter(this::overlaps).count();
+    public Long exercise2(String fileName) {
+        List<AssignmentPair> input = FileReader.readAllLines(fileName, str -> {
+            Matcher m = pattern.matcher(str);
+            m.find();
+            return new AssignmentPair(new Assignment(m.group(1), m.group(2)), new Assignment(m.group(3), m.group(4)));
+        });
+        return input.stream().filter(ap -> overlaps(ap.first, ap.second)).count();
     }
 
-    private boolean overlaps(String[] assignments) {
-        Assignment first = new Assignment(assignments[0].split("-"));
-        Assignment second = new Assignment(assignments[1].split("-"));
-        return contains(assignments) || ((first.from <= second.from && second.from <= first.to) ||
+    private boolean overlaps(Assignment first, Assignment second) {
+        return contains(first, second) || ((first.from <= second.from && second.from <= first.to) ||
             (first.from <= second.to && second.to <= first.to));
     }
 
+    private record AssignmentPair(Assignment first, Assignment second) {
+    }
+
     private record Assignment(int from, int to) {
-        Assignment(String[] arr) {
-            this(Integer.parseInt(arr[0]), Integer.parseInt(arr[1]));
+        Assignment(String from, String to) {
+            this(Integer.parseInt(from), Integer.parseInt(to));
         }
     }
 }

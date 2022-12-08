@@ -7,15 +7,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public class Day2 implements AocDay {
+public class Day2 implements AocDay<Long> {
+
     @Override
-    public long exercise1(String fileName) {
+    public Long exercise1(String fileName) {
         List<String> input = FileReader.readAllLines(fileName, Function.identity());
         return input.stream().map(line -> line.split(" ")).map(this::calculateScore).reduce(0L, Long::sum);
     }
 
     @Override
-    public long exercise2(String fileName) {
+    public Long exercise2(String fileName) {
         List<String> input = FileReader.readAllLines(fileName, Function.identity());
         return input.stream().map(line -> line.split(" ")).map(this::calculateScoreFromGoal).reduce(0L, Long::sum);
     }
@@ -31,7 +32,7 @@ public class Day2 implements AocDay {
         return RPSEnum.getScoreFromResult(theirMove, game[1]);
     }
 
-    private enum RPSEnum {
+    public enum RPSEnum {
         Rock(1), Paper(2), Scissors(3);
 
         private final int score;
