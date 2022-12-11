@@ -1,37 +1,41 @@
 package aoc2022;
 
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
 import common.AocDay;
 import common.FileReader;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Day11 implements AocDay<Long> {
 
-    Pattern MONKEY = Pattern.compile("Monkey (\\d):");
-    Pattern ITEMS = Pattern.compile("  Starting items: (.*)");
-    Pattern OPERATION_ADD = Pattern.compile("  Operation: new = (.*) \\+ (.*)");
-    Pattern OPERATION_MULTIPLY = Pattern.compile("  Operation: new = (.*) \\* (.*)");
-    Pattern TEST = Pattern.compile("  Test: divisible by (\\d+)");
-    Pattern TRUE = Pattern.compile("    If true: throw to monkey (\\d)");
-    Pattern FALSE = Pattern.compile("    If false: throw to monkey (\\d)");
     @Override
     public Long exercise1(String fileName) {
         List<String> input = FileReader.readAllLines(fileName, Function.identity());
-        Map<Integer, Monkey> monkies = getMonkeyMap(input, false);
+        return passObjectsBetweenMonkies(input, 20, l -> l/3, false);
+    }
 
-        for (int i=0;i<20;i++) {
+    @Override
+    public Long exercise2(String fileName) {
+        List<String> input = FileReader.readAllLines(fileName, Function.identity());
+        return passObjectsBetweenMonkies(input, 10000, Function.identity(), true);
+    }
+
+    private Long passObjectsBetweenMonkies(List<String> input, int iterationCount, Function<Long, Long> fearReduction,
+                                           boolean optimizeForBigNumbers) {
+        Map<Integer, Monkey> monkies = getMonkeyMap(input, optimizeForBigNumbers);
+
+        for (int i=0;i<iterationCount;i++) {
             for(Monkey monkey: monkies.values()) {
                 while(!monkey.items.isEmpty()) {
                     Long item = monkey.items.remove(0);
                     Long newItemValue = monkey.operation.apply(item);
-                    newItemValue /= 3;
+                    newItemValue = fearReduction.apply(newItemValue);
                     if (monkey.condition.test(newItemValue)) {
                         monkies.get(monkey.trueTargetMonkey).items.add(newItemValue);
                     } else {
@@ -54,102 +58,73 @@ public class Day11 implements AocDay<Long> {
             .reduce(1L, (a, b) -> a * b);
     }
 
-    private Map<Integer, Monkey> getMonkeyMap(List<String> input, boolean needOptimization) {
-        Map<Integer, Monkey> monkies = new HashMap<>();
-        Monkey currentMonkey = null;
+    private Long extractModuloBase(List<String> input, boolean needOptimization) {
         List<Long> allDivisibleCriteria = new ArrayList<>();
         for (String line: input) {
-            Matcher test = TEST.matcher(line);
-            if (test.matches()) {
-                allDivisibleCriteria.add(Long.parseLong(test.group(1)));
+            List<String> tokens = Splitter.on(" ").omitEmptyStrings().splitToList(line);
+            if (tokens.size() > 0 && "Test:".equals(tokens.get(0))) {
+                allDivisibleCriteria.add(Long.parseLong(tokens.get(3)));
             }
         }
-        Long lcm = needOptimization ? lcm(allDivisibleCriteria.stream().mapToLong(l -> l).toArray()) : 100000;
+        return needOptimization ? lcm(allDivisibleCriteria.stream().mapToLong(l -> l).toArray()) : 100000;
+    }
+
+    private Map<Integer, Monkey> getMonkeyMap(List<String> input, boolean needOptimization) {
+        Long lcm = extractModuloBase(input, needOptimization);
+
+        Map<Integer, Monkey> monkies = new HashMap<>();
+        Monkey currentMonkey = new Monkey();
 
         for (String line: input) {
-            Matcher monkey = MONKEY.matcher(line);
-            if (monkey.matches()) {
-                currentMonkey = new Monkey();
-                monkies.put(Integer.parseInt(monkey.group(1)), currentMonkey);
+            List<String> tokens = Splitter.on(" ").omitEmptyStrings().trimResults(CharMatcher.anyOf(": ")).splitToList(line);
+            if (tokens.size() == 0) {
+                continue;
             }
 
-            Matcher items = ITEMS.matcher(line);
-            if (items.matches()) {
-                currentMonkey.items = Stream.of(items.group(1).split(",")).map(String::trim).map(Long::parseLong).collect(Collectors.toList());
-            }
-
-            Matcher operationAdd = OPERATION_ADD.matcher(line);
-            Matcher operationMultiply = OPERATION_MULTIPLY.matcher(line);
-            if (operationAdd.matches() || operationMultiply.matches()) {
-                BiFunction<Long, Long, Long> method; String operand1; String operand2;
-                if (operationAdd.matches()) {
-                    method = Long::sum;
-                    operand1 = operationAdd.group(1);
-                    operand2 = operationAdd.group(2);
-                } else {
-                    method = (a, b) -> a * b;
-                    operand1 = operationMultiply.group(1);
-                    operand2 = operationMultiply.group(2);
+            switch (tokens.get(0)) {
+                case "Monkey" -> {
+                    currentMonkey = new Monkey();
+                    monkies.put(Integer.parseInt(tokens.get(1)), currentMonkey);
                 }
-
-                if ("old".equals(operand1) && "old".equals(operand2)) {
-                    currentMonkey.operation = x -> method.apply(x, x) % lcm;
-                } else if ("old".equals(operand1)) {
-                    currentMonkey.operation = x -> method.apply(x, Long.parseLong(operand2)) % lcm;
-                } else {
-                    currentMonkey.operation = x -> method.apply(x, Long.parseLong(operand1)) % lcm;
+                case "Starting" -> currentMonkey.items = tokens.subList(2, tokens.size()).stream()
+                    .map(String::trim)
+                    .map(token -> StringUtils.strip(token, ","))
+                    .map(Long::parseLong)
+                    .collect(Collectors.toList());
+                case "Operation" -> currentMonkey.operation = getOperation(tokens, lcm);
+                case "Test" -> currentMonkey.condition = x -> x % Integer.parseInt(tokens.get(3)) == 0;
+                case "If" -> {
+                    if ("true".equals(tokens.get(1))) {
+                        currentMonkey.trueTargetMonkey = Integer.parseInt(tokens.get(5));
+                    } else {
+                        currentMonkey.falseTargetMonkey = Integer.parseInt(tokens.get(5));
+                    }
                 }
-            }
-
-            Matcher test = TEST.matcher(line);
-            if (test.matches()) {
-                currentMonkey.condition = x -> x % Integer.parseInt(test.group(1)) == 0;
-            }
-
-            Matcher trueMonkey = TRUE.matcher(line);
-            if (trueMonkey.matches()) {
-                currentMonkey.trueTargetMonkey = Integer.parseInt(trueMonkey.group(1));
-            }
-
-            Matcher falseMonkey = FALSE.matcher(line);
-            if (falseMonkey.matches()) {
-                currentMonkey.falseTargetMonkey = Integer.parseInt(falseMonkey.group(1));
+                default -> throw new UnsupportedOperationException();
             }
         }
 
         return monkies;
     }
 
-    @Override
-    public Long exercise2(String fileName) {
-        List<String> input = FileReader.readAllLines(fileName, Function.identity());
-        Map<Integer, Monkey> monkies = getMonkeyMap(input, true);
-
-        for (int i=0;i<10000;i++) {
-            for(Monkey monkey: monkies.values()) {
-                while(!monkey.items.isEmpty()) {
-                    Long item = monkey.items.remove(0);
-                    Long newItemValue = monkey.operation.apply(item);
-                    if (monkey.condition.test(newItemValue)) {
-                        monkies.get(monkey.trueTargetMonkey).items.add(newItemValue);
-                    } else {
-                        monkies.get(monkey.falseTargetMonkey).items.add(newItemValue);
-                    }
-                    monkey.inspectionCount++;
-                }
-            }
-
-            System.out.println("After " + (i+1) + " rounds, inspection counts are:");
-            for (Map.Entry<Integer, Monkey> m: monkies.entrySet()) {
-                System.out.println("Monkey " + m.getKey() + ": " + m.getValue().inspectionCount);
-            }
+    private Function<Long, Long> getOperation(List<String> tokens, Long lcm) {
+        BiFunction<Long, Long, Long> method;
+        if ("+".equals(tokens.get(4))) {
+            method = Long::sum;
+        } else {
+            method = (a, b) -> a * b;
         }
 
-        return monkies.values().stream()
-            .map(m -> m.inspectionCount)
-            .sorted(Comparator.reverseOrder())
-            .limit(2)
-            .reduce(1L, (a, b) -> a * b);
+        String operand1 = tokens.get(3);
+        String operand2 = tokens.get(5);
+
+        if ("old".equals(operand1) && "old".equals(operand2)) {
+            return x -> method.apply(x, x) % lcm;
+        } else if ("old".equals(operand1)) {
+            return x -> method.apply(x, Long.parseLong(operand2)) % lcm;
+        } else {
+            return x -> method.apply(x, Long.parseLong(operand1)) % lcm;
+        }
     }
 
     private static class Monkey {
